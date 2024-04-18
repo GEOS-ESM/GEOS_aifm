@@ -94,7 +94,7 @@ def setup(params):
 
 
 def autoregressive_inference(params, ic, valid_data_full, model): 
-    ic = int(ic)
+    ic = int(ic+1 if params['backward'] else ic)
     #initialize global variables
     device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
     exp_dir = params['experiment_dir'] 
@@ -126,8 +126,12 @@ def autoregressive_inference(params, ic, valid_data_full, model):
     if params.masked_acc:
       maskarray = torch.as_tensor(np.load(params.maskpath)[0:720]).to(device, dtype=torch.float)
     valid_data = torch.unsqueeze(valid_data_full[ic][0], 0)
-    for i in range(ic+1, (ic+prediction_length*dt+n_history*dt), dt):
-      valid_data = torch.cat((valid_data, torch.unsqueeze(valid_data_full[i][0], 0)), 0)
+    if not params['backward']:
+      for i in range(ic+1, (ic+prediction_length*dt+n_history*dt), dt):
+        valid_data = torch.cat((valid_data, torch.unsqueeze(valid_data_full[i][0], 0)), 0)
+    else:
+      for i in range(ic+1, (ic+prediction_length*dt+n_history*dt), dt):
+        valid_data = torch.cat((torch.unsqueeze(valid_data_full[i][0], 0), valid_data), 0)
     valid_data = valid_data.to(device)
 
     """
@@ -253,6 +257,7 @@ if __name__ == '__main__':
     parser.add_argument("--override_dir", default=None, type = str, help = 'Path to store inference outputs; must also set --weights arg')
     parser.add_argument("--interp", default=0, type=float)
     parser.add_argument("--weights", default=None, type=str, help = 'Path to model weights, for use with override_dir option')
+    parser.add_argument("--backward", action='store_true')
     
     args = parser.parse_args()
     params = YParams(os.path.abspath(args.yaml_config), args.config)
@@ -260,6 +265,9 @@ if __name__ == '__main__':
     params['interp'] = args.interp
     params['use_daily_climatology'] = args.use_daily_climatology
     params['global_batch_size'] = params.batch_size
+    params['backward'] = args.backward
+    if params['backward']:
+        params.exp_dir = os.path.join(params.exp_dir, 'backward')
 
     torch.cuda.set_device(0)
     torch.backends.cudnn.benchmark = True

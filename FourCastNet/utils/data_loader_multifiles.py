@@ -194,9 +194,9 @@ class GetDataset(Dataset):
     # year_idx = int(global_idx/self.n_samples_per_year) #which year we are on
     # local_idx = int(global_idx%self.n_samples_per_year) #which sample in that year we are on - determines indices for centering
     if self.two_step_training:
-        global_idx = min(global_idx, self.n_samples_total-3)
+        global_idx = min(global_idx, self.n_samples_total-3) if not params['backward'] else max(2, global_idx)
     else:
-        global_idx = min(global_idx, self.n_samples_total-2)
+        global_idx = min(global_idx, self.n_samples_total-2) if not params['backward'] else max(1, global_idx)
 
     file_idx, hour_idx = self.get_indices(global_idx)
 
@@ -204,8 +204,12 @@ class GetDataset(Dataset):
 
     #open image file
     data = self.get_data_from_file(file_idx)
-    if hour_idx == 23 or (hour_idx == 22 and self.two_step_training):
+    if (not params['backward']) and hour_idx == 23 or (hour_idx == 22 and self.two_step_training):
         data = np.concatenate((data, self.get_data_from_file(file_idx+1)), axis=0)
+    elif params['backward'] and hour_idx == 0 or (hour_idx == 1 and self.two_step_training):
+        hour_idx += 24
+        data = np.concatenate((self.get_data_from_file(file_idx-1), data), axis=0)
+
     #if self.files[file_idx] is None:
     #    self._open_file(year_idx)
 
@@ -257,6 +261,13 @@ class GetDataset(Dataset):
     if self.precip:
       return reshape_fields(self.files[year_idx][inp_local_idx, self.in_channels], 'inp', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y,self.params, y_roll, self.train), \
                 reshape_precip(self.precip_files[year_idx][tar_local_idx+step], 'tar', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y, self.params, y_roll, self.train)
+    elif params['backward']:
+        if self.two_step_training:
+            return reshape_fields(data[(hour_idx-self.dt*self.n_history):(hour_idx+1):self.dt,:,:,:], 'inp', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y,self.params, y_roll, self.train, self.normalize, orog, self.add_noise), \
+                    (reshape_fields(data[hour_idx - step:hour_idx - step - 2:-1, :,:,:], 'tar', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y, self.params, y_roll, self.train, self.normalize, orog) if hour_idx > 2 else reshape_fields(data[hour_idx - step::-1, :,:,:], 'tar', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y, self.params, y_roll, self.train, self.normalize, orog))
+        else:
+            return reshape_fields(data[(hour_idx-self.dt*self.n_history):(hour_idx+1):self.dt, :,:,:], 'inp', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y,self.params, y_roll, self.train, self.normalize, orog, self.add_noise), \
+                    reshape_fields(data[hour_idx - step, :,:,:], 'tar', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y, self.params, y_roll, self.train, self.normalize, orog)
     else:
         if self.two_step_training:
             return reshape_fields(data[(hour_idx-self.dt*self.n_history):(hour_idx+1):self.dt, :,:,:], 'inp', self.crop_size_x, self.crop_size_y, rnd_x, rnd_y,self.params, y_roll, self.train, self.normalize, orog, self.add_noise), \

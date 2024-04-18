@@ -557,12 +557,16 @@ if __name__ == '__main__':
   parser.add_argument("--config", default='default', type=str)
   parser.add_argument("--enable_amp", action='store_true')
   parser.add_argument("--epsilon_factor", default = 0, type = float)
+  parser.add_argument("--backward", action='store_true')
 
   args = parser.parse_args()
 
   print(os.path.abspath(args.yaml_config))
   params = YParams(os.path.abspath(args.yaml_config), args.config)
   params['epsilon_factor'] = args.epsilon_factor
+  params['backward'] = args.backward
+  if params['backward']:
+    params.exp_dir = os.path.join(params.exp_dir, 'backward')
 
   params['world_size'] = 1
   if 'WORLD_SIZE' in os.environ:
