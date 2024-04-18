@@ -80,6 +80,7 @@ afno_backbone: &backbone
   valid_data_path: '/discover/nobackup/awang17/data/test'
   inf_data_path: '/discover/nobackup/awang17/data/out_of_sample' # test set path for inference
   exp_dir: '/discover/nobackup/awang17/SFNO/'
+  backward: !!bool False
     #time_means_path:   '/discover/nobackup/adasilva/FCN/stats/time_means.npy'
     #global_means_path: '/discover/nobackup/adasilva/FCN/stats/global_means.npy'
     #global_stds_path:  '/discover/nobackup/adasilva/FCN/stats/global_stds.npy'
