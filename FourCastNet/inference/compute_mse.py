@@ -53,7 +53,7 @@ def downsample(x, scale=0.125):
 def setup(params):
     device = torch.cuda.current_device() if torch.cuda.is_available() else 'cpu'
     #get data loader
-    valid_data_loader, valid_dataset = get_data_loader(params, params.inf_data_path, dist.is_initialized(), train=False)
+    valid_data_loader, valid_dataset = get_data_loader(params, params.train_data_path, dist.is_initialized(), train=False)
     img_shape_x = valid_dataset.img_shape_x
     img_shape_y = valid_dataset.img_shape_y
     params.img_shape_x = img_shape_x
@@ -84,7 +84,7 @@ def setup(params):
     model = model.to(device)
 
     # load the validation data
-    files_paths = glob.glob(params.inf_data_path + "/*.nc4")
+    files_paths = glob.glob(params.train_data_path + "/*.nc4")
     files_paths.sort()
     if params.log_to_screen:
         logging.info('Loading inference data')
